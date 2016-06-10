@@ -2,10 +2,10 @@ var RAG = (function ($) {
     var context = null;
     var config = {
         selector: '', // the canvas element selector
-        
+
         width: 1000, // the canvas element width
         height: 600, // the canvas element height
-        
+
         sideRatio: 10, // divide on side of the triangle into 1:(10 - 1) sections
         fillDensity: 90, // one triangle will be filled with this amount of lines
         cornerRange: 0, // range for triangle corner point location
@@ -23,15 +23,15 @@ var RAG = (function ($) {
         var canvasElement = $(config.selector)[0] || null;
 
         if (canvasElement === null) {
-            var msg = 'Missing canvas element or wrong selector (' 
-                + config.selector 
+            var msg = 'Missing canvas element or wrong selector ('
+                + config.selector
                 + ')';
             throw(new Error(msg));
 
         } else {
             initContext(canvasElement);
             initRatios();
-            
+
             var points = calculateTrianglesCorners();
             var coordinates = generateCoordinates(points);
             coordinates.forEach(drawTriangle);
@@ -54,8 +54,8 @@ var RAG = (function ($) {
         if (config.cornerRange === 0) {
             config.cornerRange =
                 (config.stepDistanceAxisX > config.stepDistanceAxisY)
-                ? Math.floor(config.stepDistanceAxisY * 0.6) 
-                : Math.floor(config.stepDistanceAxisX * 0.6) 
+                ? Math.floor(config.stepDistanceAxisY * 0.6)
+                : Math.floor(config.stepDistanceAxisX * 0.6)
         }
     }
 
@@ -140,7 +140,7 @@ var RAG = (function ($) {
                 oneTriangle[i - 2]
             );
         };
-        
+
         fillOneTriangle(oneTriangle);
     }
 
@@ -157,15 +157,27 @@ var RAG = (function ($) {
     }
 
     function fillOneTriangle (points) {
-        // draw the triangles sides
-        drawLine(points[0], points[1]);
-        drawLine(points[1], points[2]);
-        drawLine(points[2], points[0]);
+        var pointPairs = [];
+
+        // the triangle's sides
+        pointPairs.push([points[0], points[1]]);
+        pointPairs.push([points[1], points[2]]);
+        pointPairs.push([points[2], points[0]]);
 
         // fill up the triangle with lines
         for (var j = 2; j < config.fillDensity; j++) {
-            drawLine(points[j], points[j + 1]);
+            pointPairs.push([points[j], points[j + 1]]);
         };
+
+        // delayed linedrawing almost an animation
+        var nIntervId = setInterval(function (){
+            if (pointPairs.length) {
+                var x = pointPairs.shift();
+                drawLine(x.shift(), x.shift());
+            } else {
+                clearInterval(nIntervId);
+            }
+        }, 20);
     }
 
     function drawLine (from, to) {
@@ -181,7 +193,7 @@ var RAG = (function ($) {
 
     function shuffleArray (a) {
         var i, j, x;
-        
+
         for (i = a.length; i; i -= 1) {
             j = Math.floor(Math.random() * i);
             x = a[i - 1];
