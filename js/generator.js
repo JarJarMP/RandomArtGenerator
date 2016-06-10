@@ -1,41 +1,51 @@
 var RAG = (function ($) {
     var context = null;
     var config = {
-        selector: '', // the canvas element selector
+        selector: '', // selector of the canvas element
 
-        width: 1000, // the canvas element width
-        height: 600, // the canvas element height
+        width: 1000, // the canvas element width in pixel
+        height: 600, // the canvas element height in pixel
 
-        sideRatio: 10, // divide on side of the triangle into 1:(10 - 1) sections
+        sideRatio: 10, // divide on side of the triangle in the ratioof 1:(sideRatio - 1)
         fillDensity: 90, // one triangle will be filled with this amount of lines
-        cornerRange: 0, // range for triangle corner point location
+        fillSpeed: 20, // how fast the art piece will be drawn (all triangles will be started at the same time)
+        cornerIntval: 0, // interval for triangle corner point location
+        cornerIntvalWeight: 0.6, // constant for calculating cornerIntval from the stepDistance
 
-        useColor: false, // whether colorize the piece by triangles or not
+        useColor: false, // whether colorize the art piece by triangles or not
 
-        dividerPointWeight: 100, // init
-        dividerPointCountX: 0, // how many divider points will be on the x axis
-        dividerPointCountY: 0, // how many divider points will be on the y axis
-        stepDistanceAxisX: 0, // distance between two divider point
-        stepDistanceAxisY: 0 // distance between two divider point
+        divPointWeight: 100, // init
+        divPointCountX: 0, // how many divider points will be on the x axis
+        divPointCountY: 0, // how many divider points will be on the y axis
+        stepDistX: 0, // distance between two divider point on the x axis
+        stepDistY: 0 // distance between two divider point on the y axis
     };
 
     function initCanvas (options) {
+        // merge incoming parameters into default config
         $.extend(config, options);
 
+        // grab the canvas DOM element
         var canvasElement = $(config.selector)[0] || null;
 
         if (canvasElement === null) {
-            var msg = 'Missing canvas element or wrong selector ('
-                + config.selector
-                + ')';
-            throw(new Error(msg));
-
+            // if element not exists, log a message and do not do any further actions
+            console.log('Missing canvas element: ' + config.selector);
         } else {
+            // init the canvas context from the element, set sizes
             initContext(canvasElement);
+
+            // calculate values related to the triangle sizes
+            // based on the canvas sizes
             initRatios();
 
-            var points = calculateTrianglesCorners();
-            generateCoordinates(points).forEach(drawTriangle);
+            // calculate the coordinates where will be triangle corner
+            var points = generateTrianglesCorners();
+
+            // from the possible corner coordinates
+            // calculate triangles' corners' coordinates
+            // and draw all triangles one-by-one
+            calculateTriangleCoordinates(points).forEach(drawTriangle);
         }
     }
 
@@ -46,21 +56,21 @@ var RAG = (function ($) {
     }
 
     function initRatios () {
-        config.dividerPointCountX = Math.floor(Math.floor(config.width / config.dividerPointWeight) / 2);
-        config.dividerPointCountY = Math.floor(Math.floor(config.height / config.dividerPointWeight) / 2);
+        config.divPointCountX = Math.floor(Math.floor(config.width / config.divPointWeight) / 2);
+        config.divPointCountY = Math.floor(Math.floor(config.height / config.divPointWeight) / 2);
 
-        config.stepDistanceAxisX = Math.floor(config.width / config.dividerPointCountX);
-        config.stepDistanceAxisY = Math.floor(config.height / config.dividerPointCountY);
+        config.stepDistX = Math.floor(config.width / config.divPointCountX);
+        config.stepDistY = Math.floor(config.height / config.divPointCountY);
 
-        if (config.cornerRange === 0) {
-            config.cornerRange =
-                (config.stepDistanceAxisX > config.stepDistanceAxisY)
-                ? Math.floor(config.stepDistanceAxisY * 0.6)
-                : Math.floor(config.stepDistanceAxisX * 0.6)
+        if (config.cornerIntval === 0) {
+            config.cornerIntval =
+                (config.stepDistX > config.stepDistY)
+                ? Math.floor(config.stepDistY * config.cornerIntvalWeight)
+                : Math.floor(config.stepDistX * config.cornerIntvalWeight)
         }
     }
 
-    function calculateTrianglesCorners () {
+    function generateTrianglesCorners () {
         var points = [];
         var limitX = {
             max: config.width,
@@ -71,28 +81,28 @@ var RAG = (function ($) {
             min: 0
         };
 
-        for (var i = 0; i <= config.dividerPointCountX; i++) {
+        for (var i = 0; i <= config.divPointCountX; i++) {
             points[i] = (typeof points[i] === 'undefined') ? [] : points[i];
 
-            for (var j = 0; j <= config.dividerPointCountY; j++) {
+            for (var j = 0; j <= config.divPointCountY; j++) {
                 points[j] = (typeof points[j] === 'undefined') ? [] : points[j];
 
                 points[i][j] = {
-                    x: calculateCoordinate(i * config.stepDistanceAxisX, limitX),
-                    y: calculateCoordinate(j * config.stepDistanceAxisY, limitY)
+                    x: calculateCoordinate(i * config.stepDistX, limitX),
+                    y: calculateCoordinate(j * config.stepDistY, limitY)
                 };
 
-                // overwrite canvas border line points with exact min, max values
-                if (i == 0) {
+                // overwrite canvas' frame line points with exact values
+                if (i === 0) {
                     points[i][j]['x'] = limitX.min;
                 }
-                if (j == 0) {
+                if (j === 0) {
                     points[i][j]['y'] = limitY.min;
                 }
-                if (i == config.dividerPointCountX) {
+                if (i === config.divPointCountX) {
                     points[i][j]['x'] = limitX.max;
                 }
-                if (j == config.dividerPointCountY) {
+                if (j === config.divPointCountY) {
                     points[i][j]['y'] = limitY.max;
                 }
             }
@@ -102,22 +112,25 @@ var RAG = (function ($) {
     }
 
     function calculateCoordinate(value, limits) {
-        var max = value + (config.cornerRange / 2);
-        var min = value - (config.cornerRange / 2);
+        var max = value + (config.cornerIntval / 2);
+        var min = value - (config.cornerIntval / 2);
 
-        max = max > limits.max ? limits.max : max;
-        min = min < limits.min ? limits.min : min;
+        max = (max > limits.max) ? limits.max : max;
+        min = (min < limits.min) ? limits.min : min;
 
         return getRandom(min, max);
     }
 
-    function generateCoordinates (points) {
+    function calculateTriangleCoordinates (points) {
         var coordinates = [];
-        var setpAmountX = points.length;
-        var stepAmountY = points[0].length;
+        var stepX = points.length;
+        var stepY = points[0].length;
 
-        for (var i = 0; i < setpAmountX - 1; i++) {
-            for (var j = 0; j < stepAmountY - 1; j++) {
+        // grab a 'rectangle'
+        // generate two triangles inside of it
+        // by saving the three pair of coordinates
+        for (var i = 0; i < stepX - 1; i++) {
+            for (var j = 0; j < stepY - 1; j++) {
                 coordinates.push([
                     {x:points[i][j]['x'], y:points[i][j]['y']},
                     {x:points[i + 1][j]['x'], y:points[i + 1][j]['y']},
@@ -131,10 +144,13 @@ var RAG = (function ($) {
             }
         }
 
-        return coordinates.map(shuffleArray);
+        return coordinates;
     }
 
     function drawTriangle (oneTriangle) {
+        // the three corners are given by there coordinates
+        // calculate all the points inside the triangle
+        // where lines should be drawn
         for (var i = 3; i <= config.fillDensity; i++) {
             oneTriangle[i] = calculateNextPoint(
                 oneTriangle[i - 3],
@@ -142,14 +158,15 @@ var RAG = (function ($) {
             );
         };
 
+        // draw the triangle and fill up with the inner lines too
         fillOneTriangle(oneTriangle);
     }
 
     function calculateNextPoint (A, B) {
         // ratio for divider point
         // http://cms.sulinet.hu/get/d/d16e4558-1ad2-4f7f-8a8f-c9f32fdfc60e/1/7/b/Normal/b17ca002.jpg
-        var n = config.sideRatio - 1;
         var m = 1;
+        var n = config.sideRatio - m;
 
         return {
             x: (n * A.x + m * B.x) / (m + n),
@@ -165,7 +182,7 @@ var RAG = (function ($) {
         pointPairs.push([points[1], points[2]]);
         pointPairs.push([points[2], points[0]]);
 
-        // fill up the triangle with lines
+        // create the remaining point pairs for tha actual drawing
         for (var j = 2; j < config.fillDensity; j++) {
             pointPairs.push([points[j], points[j + 1]]);
         };
@@ -174,14 +191,14 @@ var RAG = (function ($) {
         var color = getRandomRGBColor();
 
         // delayed linedrawing almost an animation
-        var nIntervId = setInterval(function (){
+        var intervalId = setInterval(function (){
             if (pointPairs.length) {
                 var pointPair = pointPairs.shift();
                 drawLine(pointPair.shift(), pointPair.shift(), color);
             } else {
-                clearInterval(nIntervId);
+                clearInterval(intervalId);
             }
-        }, 20);
+        }, config.fillSpeed);
     }
 
     function drawLine (from, to, color) {
@@ -189,7 +206,7 @@ var RAG = (function ($) {
         context.moveTo(from.x, from.y);
         context.lineTo(to.x, to.y);
 
-        if (config.useColor) {
+        if (config.useColor && typeof color !== 'undefined') {
             context.strokeStyle = color;
         }
 
@@ -207,19 +224,6 @@ var RAG = (function ($) {
 
     function getRandom (min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    function shuffleArray (a) {
-        var i, j, x;
-
-        for (i = a.length; i; i -= 1) {
-            j = Math.floor(Math.random() * i);
-            x = a[i - 1];
-            a[i - 1] = a[j];
-            a[j] = x;
-        }
-
-        return a;
     }
 
     return {
