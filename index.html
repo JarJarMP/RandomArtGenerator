@@ -6,6 +6,7 @@
 
         <title>Random Art Generator</title>
 
+        <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:400,700">
         <link rel="stylesheet" type="text/css" href="css/reset.css">
         <link rel="stylesheet" type="text/css" href="css/normalize.css">
         <link rel="stylesheet" type="text/css" href="css/rag.css">
@@ -15,8 +16,24 @@
         <script type="text/javascript" src="js/rag.js"></script>
     </head>
     <body>
-        <div id="container">
-            <canvas id="the-canvas"></canvas>
+        <div class="content">
+            <header>
+                <h1>Random Art Generator</h1>
+                <h3>Generating random(ish) drawings based on
+                    <a href="https://youtu.be/vTvw_LGBtlM?t=10m16s" target="_blank">Sophie's real world concept</a>.
+                </h3>
+            </header>
+
+            <div class="art-container">
+                <canvas class="the-canvas"></canvas>
+            </div>
+
+            <footer>
+                <p>
+                    Source on
+                    <a href="https://github.com/JarJarMP/RandomArtGenerator" target="_blank">GitHub</a>.
+                </p>
+            </footer>
         </div>
     </body>
 </html>
