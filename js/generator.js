@@ -10,6 +10,8 @@ var RAG = (function ($) {
         fillDensity: 90, // one triangle will be filled with this amount of lines
         cornerRange: 0, // range for triangle corner point location
 
+        useColor: false, // whether colorize the piece by triangles or not
+
         dividerPointWeight: 100, // init
         dividerPointCountX: 0, // how many divider points will be on the x axis
         dividerPointCountY: 0, // how many divider points will be on the y axis
@@ -33,8 +35,7 @@ var RAG = (function ($) {
             initRatios();
 
             var points = calculateTrianglesCorners();
-            var coordinates = generateCoordinates(points);
-            coordinates.forEach(drawTriangle);
+            generateCoordinates(points).forEach(drawTriangle);
         }
     }
 
@@ -169,22 +170,39 @@ var RAG = (function ($) {
             pointPairs.push([points[j], points[j + 1]]);
         };
 
+        // random color for one triangle
+        var color = getRandomRGBColor();
+
         // delayed linedrawing almost an animation
         var nIntervId = setInterval(function (){
             if (pointPairs.length) {
-                var x = pointPairs.shift();
-                drawLine(x.shift(), x.shift());
+                var pointPair = pointPairs.shift();
+                drawLine(pointPair.shift(), pointPair.shift(), color);
             } else {
                 clearInterval(nIntervId);
             }
         }, 20);
     }
 
-    function drawLine (from, to) {
+    function drawLine (from, to, color) {
         context.beginPath();
         context.moveTo(from.x, from.y);
         context.lineTo(to.x, to.y);
+
+        if (config.useColor) {
+            context.strokeStyle = color;
+        }
+
         context.stroke();
+    }
+
+    function getRandomRGBColor() {
+        var values = [
+            getRandom(0, 255),
+            getRandom(0, 255),
+            getRandom(0, 255)
+        ];
+        return 'rgb(' + values.join(', ') + ')';
     }
 
     function getRandom (min, max) {
